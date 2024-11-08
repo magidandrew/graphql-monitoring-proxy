@@ -53,6 +53,6 @@ docker: build-all ## build multi-arch (AMD64 and ARM64) docker image
 	@mv graphql-proxy-arm64 dist/bot-linux-arm64
 	@docker buildx build --push \
 		--platform linux/amd64,linux/arm64 \
-		-t ghcr.io/lukaszraczylo/graphql-monitoring-proxy:local-test-build-$(TIMESTAMP) \
+		-t gama266/graphql-monitoring-proxy:latest \
 		.
 
