@@ -164,6 +164,11 @@ func processGraphQLRequest(c *fiber.Ctx) error {
 
 	wasCached := false
 
+	cfg.Logger.Info(&libpack_logger.LogMessage{
+		Message: "parsedResult + cacheredisenable",
+		Pairs:   map[string]interface{}{"parsedResult": parsedResult, "cacheredisenable": cfg.Cache.CacheRedisEnable},
+	})
+
 	if parsedResult.cacheRefresh {
 		cfg.Logger.Debug(&libpack_logger.LogMessage{
 			Message: "Cache refresh requested via query",
@@ -171,10 +176,19 @@ func processGraphQLRequest(c *fiber.Ctx) error {
 		})
 		libpack_cache.CacheDelete(calculatedQueryHash)
 	}
-
-	if parsedResult.cacheRequest || cfg.Cache.CacheEnable || cfg.Cache.CacheRedisEnable {
+	if parsedResult.operationType == "mutation" {
+		// Never cache mutations
+		if err := proxyTheRequest(c, parsedResult.activeEndpoint); err != nil {
+			cfg.Logger.Error(&libpack_logger.LogMessage{
+				Message: "Can't proxy the mutation request",
+				Pairs:   map[string]interface{}{"error": err.Error()},
+			})
+			cfg.Monitoring.Increment(libpack_monitoring.MetricsFailed, nil)
+			return c.Status(fiber.StatusInternalServerError).SendString("Can't proxy the request - try again later")
+		}
+	} else if parsedResult.cacheRequest && cfg.Cache.CacheRedisEnable {
 		cfg.Logger.Debug(&libpack_logger.LogMessage{
-			Message: "Cache enabled",
+			Message: "Cache enabled for query",
 			Pairs:   map[string]interface{}{"via_query": parsedResult.cacheRequest, "via_env": cfg.Cache.CacheEnable},
 		})
 
